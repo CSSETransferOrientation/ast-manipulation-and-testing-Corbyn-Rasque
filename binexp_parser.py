@@ -22,24 +22,27 @@ class BinOpAst():
         Initialize a binary operator AST from a given list in prefix notation.
         Destroys the list that is passed in.
         """
-        self.val = prefix_list.pop(0)
-        if self.val.isnumeric():
-            self.type = NodeType.number
-            self.left = False
-            self.right = False
-        else:
-            self.type = NodeType.operator
-            self.left = BinOpAst(prefix_list)
-            self.right = BinOpAst(prefix_list)
+        if prefix_list:
+            self.val = prefix_list.pop(0)
+            if self.val.isnumeric():
+                self.type = NodeType.number
+                self.left = False
+                self.right = False
+            else:
+                self.type = NodeType.operator
+                self.left = BinOpAst(prefix_list)
+                self.right = BinOpAst(prefix_list)
 
     def __str__(self, indent=0):
         """
         Convert the binary tree printable string where indentation level indicates
         parent/child relationships
         """
+        
         ilvl = '  '*indent
         left = '\n  ' + ilvl + self.left.__str__(indent+1) if self.left else ''
-        right = '\n  ' + ilvl + self.right.__str__(indent+1) if self.right else ''
+        right = '  ' + ilvl + self.right.__str__(indent+1) if self.right else ''
+
         return f"{ilvl}{self.val}{left}{right}"
 
     def __repr__(self):
@@ -83,8 +86,13 @@ class BinOpAst():
         Reduce additive identities
         x + 0 = x
         """
-        # IMPLEMENT ME!
-        pass
+
+        # if self == False:
+        #     return
+        
+        # if (self.left == 0) or (self.right == 0):
+        #     self.val = self.left if self.right else self.right
+
                         
     def multiplicative_identity(self):
         """
@@ -129,4 +137,8 @@ class BinOpAst():
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # unittest.main()
+    test = '+ 1 * 0 + 7 5'
+    # test = '* + 1 2 + 3 4'
+    test_tree = BinOpAst(list(test.split()))
+    test_tree.additive_identity()
