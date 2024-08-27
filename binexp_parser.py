@@ -27,6 +27,10 @@ class BinOpAst():
                 self.type = NodeType.number
                 self.left = False
                 self.right = False
+            elif self.val.isalpha():
+                self.type = NodeType.variable
+                self.left = False
+                self.right = False
             else:
                 self.type = NodeType.operator
                 self.left = BinOpAst(prefix_list)
@@ -56,6 +60,8 @@ class BinOpAst():
         match self.type:
             case NodeType.number:
                 return self.val
+            case NodeType.variable:
+                return self.val
             case NodeType.operator:
                 return self.val + ' ' + self.left.prefix_str() + ' ' + self.right.prefix_str()
 
@@ -67,6 +73,8 @@ class BinOpAst():
         match self.type:
             case NodeType.number:
                 return self.val
+            case NodeType.variable:
+                return self.val
             case NodeType.operator:
                 return '(' + self.left.infix_str() + ' ' + self.val + ' ' + self.right.infix_str() + ')'
     def postfix_str(self):
@@ -77,6 +85,8 @@ class BinOpAst():
         match self.type:
             case NodeType.number:
                 return self.val
+            case NodeType.variable:
+                return self.val
             case NodeType.operator:
                 return self.left.postfix_str() + ' ' + self.right.postfix_str() + ' ' + self.val
 
@@ -85,7 +95,7 @@ class BinOpAst():
         For identity operations (specified by operator passed in), this function replaces
         the node with values from the non-matching branch. Example: '*' , 1 or '+' , 0 
         '''
-        if self.type == NodeType.number:
+        if self.type == NodeType.number or self.type == NodeType.variable:
             return
         elif self.type == NodeType.operator and self.val == operator:
             if self.left.val == match:
@@ -109,18 +119,17 @@ class BinOpAst():
         Reduce multiplication by zero
         x * 0 = 0
         """
-        pass
-        # if self.type == NodeType.number:
-        #     return
+        if self.type == NodeType.number or self.type == NodeType.variable:
+            return
 
-        # if self.val == '*' and ((self.left.val == 0) or (self.right.val == 0)):
-        #     print('here')
-        #     self.type = NodeType.number
-        #     self.val = 0
-        #     self.left = self.right = False
+        if self.val == '*' and ((self.left.val == 0) or (self.right.val == 0)):
+            self.type = NodeType.number
+            self.val = 0
+            self.left = self.right = False
+            return
 
-        # self.left.mult_by_zero()
-        # self.right.mult_by_zero()
+        self.left.mult_by_zero()
+        self.right.mult_by_zero()
             
     def constant_fold(self):
         """
