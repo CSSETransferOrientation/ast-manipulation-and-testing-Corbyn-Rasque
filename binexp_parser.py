@@ -8,13 +8,11 @@ from enum import Enum
 
 # Use these to distinguish node types, note that you might want to further
 # distinguish between the addition and multiplication operators
-NodeType = Enum('BinOpNodeType', ['number', 'operator'])
+NodeType = Enum('BinOpNodeType', ['number', 'operator','variable'])
 
 class BinOpAst():
     """
-    A somewhat quick and dirty structure to represent a binary operator AST.
-
-    Reads input as a list of tokens in prefix notation, converts into internal representation,
+        Reads input as a list of tokens in prefix notation, converts into internal representation,
     then can convert to prefix, postfix, or infix string output.
     """
     def __init__(self, prefix_list):
@@ -25,6 +23,7 @@ class BinOpAst():
         if prefix_list:
             self.val = prefix_list.pop(0)
             if self.val.isnumeric():
+                self.val = int(self.val)
                 self.type = NodeType.number
                 self.left = False
                 self.right = False
@@ -39,7 +38,7 @@ class BinOpAst():
         parent/child relationships
         """
         
-        ilvl = '  '*indent
+        ilvl = ' ' *indent
         left = '\n  ' + ilvl + self.left.__str__(indent+1) if self.left else ''
         right = '  ' + ilvl + self.right.__str__(indent+1) if self.right else ''
 
@@ -81,36 +80,48 @@ class BinOpAst():
             case NodeType.operator:
                 return self.left.postfix_str() + ' ' + self.right.postfix_str() + ' ' + self.val
 
-    def additive_identity(self):
-        """
-        Reduce additive identities
-        x + 0 = x
-        """
+    def identity(self, operator: str, match: int):
+        '''
+        For identity operations (specified by operator passed in), this function replaces
+        the node with values from the non-matching branch. Example: '*' , 1 or '+' , 0 
+        '''
+        if self.type == NodeType.number:
+            return
+        elif self.type == NodeType.operator and self.val == operator:
+            if self.left.val == match:
+                self.type = self.right.type
+                self.val = self.right.val
+                self.left = self.right.left
+                self.right = self.right.right
+                return
+            elif self.right.val == match:
+                self.type = self.left.type
+                self.val = self.left.val
+                self.right = self.left.right
+                self.left = self.left.left
+                return
 
-        # if self == False:
-        #     return
-        
-        # if (self.left == 0) or (self.right == 0):
-        #     self.val = self.left if self.right else self.right
-
-                        
-    def multiplicative_identity(self):
-        """
-        Reduce multiplicative identities
-        x * 1 = x
-        """
-        # IMPLEMENT ME!
-        pass
-    
+        self.left.identity(operator, match)
+        self.right.identity(operator, match)    
     
     def mult_by_zero(self):
         """
         Reduce multiplication by zero
         x * 0 = 0
         """
-        # Optionally, IMPLEMENT ME! (I'm pretty easy)
         pass
-    
+        # if self.type == NodeType.number:
+        #     return
+
+        # if self.val == '*' and ((self.left.val == 0) or (self.right.val == 0)):
+        #     print('here')
+        #     self.type = NodeType.number
+        #     self.val = 0
+        #     self.left = self.right = False
+
+        # self.left.mult_by_zero()
+        # self.right.mult_by_zero()
+            
     def constant_fold(self):
         """
         Fold constants,
@@ -130,15 +141,17 @@ class BinOpAst():
         3) Extra #1: Multiplication by 0, e.g. x * 0 = 0
         4) Extra #2: Constant folding, e.g. statically we can reduce 1 + 1 to 2, but not x + 1 to anything
         """
-        self.additive_identity()
-        self.multiplicative_identity()
+        self.identity('+', 0)   # Additive Identity
+        self.identity('*', 1)   # Multiplicative Identity
         self.mult_by_zero()
         self.constant_fold()
 
 
 if __name__ == "__main__":
     # unittest.main()
-    test = '+ 1 * 0 + 7 5'
+    test = '+ 1 * 0 + 7 + 5 0'
     # test = '* + 1 2 + 3 4'
     test_tree = BinOpAst(list(test.split()))
-    test_tree.additive_identity()
+    print(test_tree)
+    test_tree.simplify_binops()
+    print(test_tree)
