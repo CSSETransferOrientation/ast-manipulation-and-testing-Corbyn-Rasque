@@ -3,7 +3,7 @@
 
 ## Scope of Work
 
-All specifications for this project have been implemented, including the extra Zero Multiplication & Constant Folding functionality. A suite of tests have been included and run automatically on file open. New tests can be added to the testbench folder (inputs should include a title for the test as the first line in the input file for identification, followed by the prefix equation to test). These unit tests will run & complete as from within a single all-encompassing test, for which the results will print out as a simple pass/fail.
+All specifications for this project have been implemented, including the extra Zero Multiplication & Constant Folding functionality. A suite of tests have been included and run automatically on file open. New tests can be added to the testbench folder (inputs should include a title for the test as the first line in the input file for identification, followed by the prefix equation to test). These unit tests will run & complete from within a single all-encompassing test, for which the results will print out as a simple pass/fail.
 
 ## Learning Outcomes
 
