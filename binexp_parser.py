@@ -11,18 +11,18 @@ from enum import Enum
 NodeType = Enum('BinOpNodeType', ['number', 'operator','variable'])
 
 class BinOpAst():
-    """
+    '''
         Reads input as a list of tokens in prefix notation, converts into internal representation,
     then can convert to prefix, postfix, or infix string output.
-    """
+    '''
     def __init__(self, prefix_list):
-        """
+        '''
         Initialize a binary operator AST from a given list in prefix notation.
         Destroys the list that is passed in.
-        """
+        '''
         if prefix_list:
             self.val = prefix_list.pop(0)
-            if self.val.isnumeric():
+            if self.val.lstrip("-").isnumeric():
                 self.val = int(self.val)
                 self.type = NodeType.number
                 self.left = False
@@ -37,58 +37,58 @@ class BinOpAst():
                 self.right = BinOpAst(prefix_list)
 
     def __str__(self, indent=0):
-        """
+        '''
         Convert the binary tree printable string where indentation level indicates
         parent/child relationships
-        """
+        '''
         
         ilvl = ' ' *indent
         left = '\n  ' + ilvl + self.left.__str__(indent+1) if self.left else ''
-        right = '  ' + ilvl + self.right.__str__(indent+1) if self.right else ''
+        right = '\n  ' + ilvl + self.right.__str__(indent+1) if self.right else ''
 
         return f"{ilvl}{self.val}{left}{right}"
 
     def __repr__(self):
-        """Generate the repr from the string"""
+        '''Generate the repr from the string'''
         return str(self)
 
     def prefix_str(self):
-        """
+        '''
         Convert the BinOpAst to a prefix notation string.
         Make use of new Python 3.10 case!
-        """
+        '''
         match self.type:
             case NodeType.number:
-                return self.val
+                return str(self.val)
             case NodeType.variable:
-                return self.val
+                return str(self.val)
             case NodeType.operator:
-                return self.val + ' ' + self.left.prefix_str() + ' ' + self.right.prefix_str()
+                return str(self.val) + ' ' + self.left.prefix_str() + ' ' + self.right.prefix_str()
 
     def infix_str(self):
-        """
+        '''
         Convert the BinOpAst to a prefix notation string.
         Make use of new Python 3.10 case!
-        """
+        '''
         match self.type:
             case NodeType.number:
-                return self.val
+                return str(self.val)
             case NodeType.variable:
-                return self.val
+                return str(self.val)
             case NodeType.operator:
-                return '(' + self.left.infix_str() + ' ' + self.val + ' ' + self.right.infix_str() + ')'
+                return '(' + self.left.infix_str() + ' ' + str(self.val) + ' ' + self.right.infix_str() + ')'
     def postfix_str(self):
-        """
+        '''
         Convert the BinOpAst to a prefix notation string.
         Make use of new Python 3.10 case!
-        """
+        '''
         match self.type:
             case NodeType.number:
-                return self.val
+                return str(self.val)
             case NodeType.variable:
-                return self.val
+                return str(self.val)
             case NodeType.operator:
-                return self.left.postfix_str() + ' ' + self.right.postfix_str() + ' ' + self.val
+                return self.left.postfix_str() + ' ' + self.right.postfix_str() + ' ' + str(self.val)
 
     def identity(self, operator: str, match: int):
         '''
@@ -109,16 +109,16 @@ class BinOpAst():
                 self.val = self.left.val
                 self.right = self.left.right
                 self.left = self.left.left
-                return
+                return 
 
         self.left.identity(operator, match)
-        self.right.identity(operator, match)    
+        self.right.identity(operator, match)  
     
     def mult_by_zero(self):
-        """
+        '''
         Reduce multiplication by zero
         x * 0 = 0
-        """
+        '''
         if self.type == NodeType.number or self.type == NodeType.variable:
             return
 
@@ -130,37 +130,75 @@ class BinOpAst():
 
         self.left.mult_by_zero()
         self.right.mult_by_zero()
-            
-    def constant_fold(self):
-        """
+  
+    def constant_fold(self, changed = False) -> bool:
+        '''
         Fold constants,
         e.g. 1 + 2 = 3
         e.g. x + 2 = x + 2
-        """
-        # Optionally, IMPLEMENT ME! This is a bit more challenging. 
-        # You also likely want to add an additional node type to your AST
-        # to represent identifiers.
-        pass            
+        '''
+        
+        if self.type == NodeType.number or self.type == NodeType.variable:
+            return changed
+
+        if self.left.type == NodeType.number and self.right.type == NodeType.number:
+            self.type = NodeType.number
+            match self.val:
+                case '+':
+                    self.val = self.left.val + self.right.val
+                case '-':
+                    self.val = self.left.val - self.right.val
+                case '*':
+                    self.val = self.left.val * self.right.val
+                case '/':
+                    self.val = int(self.left.val // self.right.val)
+                case '%':
+                    self.val = int(self.left.val % self.right.val)
+            self.left = self.right = False
+            changed = True
+
+        if self.left:
+            changed = self.left.constant_fold(changed) or changed
+        if self.right:
+            changed = self.right.constant_fold(changed) or changed
+        
+        return changed
 
     def simplify_binops(self):
-        """
+        '''
         Simplify binary trees with the following:
         1) Additive identity, e.g. x + 0 = x
         2) Multiplicative identity, e.g. x * 1 = x
         3) Extra #1: Multiplication by 0, e.g. x * 0 = 0
         4) Extra #2: Constant folding, e.g. statically we can reduce 1 + 1 to 2, but not x + 1 to anything
-        """
-        self.identity('+', 0)   # Additive Identity
-        self.identity('*', 1)   # Multiplicative Identity
-        self.mult_by_zero()
-        self.constant_fold()
+        '''
+        self.identity('+', 0)           # Additive Identity
+        self.identity('*', 1)           # Multiplicative Identity
+        self.mult_by_zero()             # Multiplication by Zero
+        if self.constant_fold():        # Iteratively simplifies until no more constant folding occurs
+            self.simplify_binops()
 
+class BinOpAstTester(unittest.TestCase):
+    # ins = osjoin('testbench')
+    ins = osjoin(input('Enter test folder name: '))
+
+    def testAll(self):
+        for test_type in os.listdir(self.ins):
+            for test_file in os.listdir(osjoin(self.ins, test_type, 'inputs')):
+                if test_file[0] != '.':
+                    with open(osjoin(self.ins, test_type, 'inputs', test_file)) as test:
+                        test_name = test.readline().strip()
+                        data = test.readline().strip()
+                    with open(osjoin(self.ins, test_type, 'outputs', test_file)) as solution:
+                        expected = solution.readline().strip()
+                    with self.subTest(msg=f'Testing {test_name}', inp=data, expected=expected):
+                        result = BinOpAst(list(data.split()))
+                        result.simplify_binops()
+                        result = result.prefix_str()
+                        self.assertEqual(result, expected)
 
 if __name__ == "__main__":
-    # unittest.main()
-    test = '+ 1 * 0 + 7 + 5 0'
-    # test = '* + 1 2 + 3 4'
-    test_tree = BinOpAst(list(test.split()))
-    print(test_tree)
-    test_tree.simplify_binops()
-    print(test_tree)
+    unittest.main(argv=[''], verbosity=2, exit=False)
+    # test = '+ * 0 0 * + -1 2 7'
+    # test = '+ * 0 0 * + -1 2 X'
+    # test = '+ * 8 7 - 14 * 30 5 * + 6 4 2'
