@@ -136,6 +136,11 @@ class BinOpAst():
         
         if self.type == NodeType.number or self.type == NodeType.variable:
             return changed
+        
+        if self.left:
+            changed = self.left.constant_fold(changed) or changed
+        if self.right:
+            changed = self.right.constant_fold(changed) or changed
 
         if self.left.type == NodeType.number and self.right.type == NodeType.number:
             self.type = NodeType.number
@@ -153,11 +158,6 @@ class BinOpAst():
             self.left = self.right = False
             changed = True
 
-        if self.left:
-            changed = self.left.constant_fold(changed) or changed
-        if self.right:
-            changed = self.right.constant_fold(changed) or changed
-        
         return changed
 
     def simplify_binops(self):
