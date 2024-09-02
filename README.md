@@ -1,5 +1,7 @@
 # Binary Operator Simplifier 
 
+;;> Overall looks good. Could use some more test cases and a few clean up things I would do
+;;> You don't really need to include the name of the test in the file, you can reconstruct that from the filename
 
 ## Scope of Work
 

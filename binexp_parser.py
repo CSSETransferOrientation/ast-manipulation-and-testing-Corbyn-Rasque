@@ -87,6 +87,7 @@ class BinOpAst():
             case NodeType.operator:
                 return self.left.postfix_str() + ' ' + self.right.postfix_str() + ' ' + str(self.val)
 
+    # ;;> Nice abstraction here to simplify implementation
     def identity(self, operator: str, match: int):
         '''
         For identity operations (specified by operator passed in), this replaces the
@@ -108,6 +109,8 @@ class BinOpAst():
                 self.left = self.left.left
                 return 
 
+        # ;;> You want these to come first, see the propogate test I added
+        # ;;> though your tests still pass, because the constant fold ends up fixing it
         self.left.identity(operator, match)
         self.right.identity(operator, match)  
     
@@ -168,6 +171,7 @@ class BinOpAst():
         3) Multiplication by 0
         4) Constant folding
         '''
+        # ;;> I would probably have made these functions like self.add_id and self.multi_id that just encapsulate these lines
         self.identity('+', 0)           # Additive Identity
         self.identity('*', 1)           # Multiplicative Identity
         self.mult_by_zero()             # Multiplication by Zero
@@ -190,7 +194,9 @@ class BinOpAstTester(unittest.TestCase):
                     print(f'Testing {test_name}')
                     with self.subTest(msg=f'Testing {test_name}', inp=data, expected=expected):
                         result = BinOpAst(list(data.split()))
-                        result.simplify_binops()
+                        result.simplify_binops() # ;;> All of your tests are testing all of the functions with this line
+                        # ;;> Which works but could make tracking bugs down confusing depending on the shape of the test
+                        # ;;> It's generally better to test one thing specifically so that your bug chasing starts with fewer options
                         result = result.prefix_str()
                         self.assertEqual(result, expected)
 
