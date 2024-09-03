@@ -74,6 +74,7 @@ class BinOpAst():
                 return str(self.val)
             case NodeType.operator:
                 return '(' + self.left.infix_str() + ' ' + str(self.val) + ' ' + self.right.infix_str() + ')'
+            
     def postfix_str(self):
         '''
         Convert the BinOpAst to a prefix notation string.
@@ -95,7 +96,11 @@ class BinOpAst():
         '''
         if self.type == NodeType.number or self.type == NodeType.variable:
             return
-        elif self.type == NodeType.operator and self.val == operator:
+        
+        self.left.identity(operator, match)
+        self.right.identity(operator, match)
+
+        if self.type == NodeType.operator and self.val == operator:
             if self.left.val == match:
                 self.type = self.right.type
                 self.val = self.right.val
@@ -107,13 +112,14 @@ class BinOpAst():
                 self.val = self.left.val
                 self.right = self.left.right
                 self.left = self.left.left
-                return 
-
-        # ;;> You want these to come first, see the propogate test I added
-        # ;;> though your tests still pass, because the constant fold ends up fixing it
-        self.left.identity(operator, match)
-        self.right.identity(operator, match)  
+                return
     
+    def add_id(self):
+        self.identity('+', 0)
+
+    def mult_id(self):
+        self.identity('*', 1)
+
     def mult_by_zero(self):
         '''
         Recursively traverses the tree to remove multiplication
@@ -121,47 +127,52 @@ class BinOpAst():
         '''
         if self.type == NodeType.number or self.type == NodeType.variable:
             return
+        
+        self.left.mult_by_zero()
+        self.right.mult_by_zero()
 
         if self.val == '*' and ((self.left.val == 0) or (self.right.val == 0)):
             self.type = NodeType.number
             self.val = 0
             self.left = self.right = False
             return
-
-        self.left.mult_by_zero()
-        self.right.mult_by_zero()
   
-    def constant_fold(self, changed = False) -> bool:
+    def evaluate(self):
+        '''
+        Evaluates an expression between two numbers.
+        '''
+        self.type = NodeType.number
+        match self.val:
+            case '+':
+                self.val = self.left.val + self.right.val
+            case '-':
+                self.val = self.left.val - self.right.val
+            case '*':
+                self.val = self.left.val * self.right.val
+            case '/':
+                self.val = int(self.left.val // self.right.val)
+            case '%':
+                self.val = int(self.left.val % self.right.val)
+        self.left = self.right = False
+
+    def constant_fold(self):
         '''
         Recursively traverses the tree and folds constants
         for a single iteration.
         '''
+
+        if self.type != NodeType.operator:
+            return
         
-        if self.type == NodeType.number or self.type == NodeType.variable:
-            return changed
-        
-        if self.left:
-            changed = self.left.constant_fold(changed) or changed
-        if self.right:
-            changed = self.right.constant_fold(changed) or changed
+        self.left.constant_fold()
+        self.right.constant_fold()
 
         if self.left.type == NodeType.number and self.right.type == NodeType.number:
-            self.type = NodeType.number
-            match self.val:
-                case '+':
-                    self.val = self.left.val + self.right.val
-                case '-':
-                    self.val = self.left.val - self.right.val
-                case '*':
-                    self.val = self.left.val * self.right.val
-                case '/':
-                    self.val = int(self.left.val // self.right.val)
-                case '%':
-                    self.val = int(self.left.val % self.right.val)
-            self.left = self.right = False
-            changed = True
-
-        return changed
+            self.evaluate()
+        else:
+            self.add_id()
+            self.mult_id()
+            self.mult_by_zero()
 
     def simplify_binops(self):
         '''
@@ -172,33 +183,64 @@ class BinOpAst():
         4) Constant folding
         '''
         # ;;> I would probably have made these functions like self.add_id and self.multi_id that just encapsulate these lines
-        self.identity('+', 0)           # Additive Identity
-        self.identity('*', 1)           # Multiplicative Identity
-        self.mult_by_zero()             # Multiplication by Zero
-        if self.constant_fold():        # Iteratively simplifies until no changes occur in constant_fold
-            self.simplify_binops()
+        self.add_id()               # Additive Identity
+        self.mult_id()              # Multiplicative Identity
+        self.mult_by_zero()         # Multiplication by Zero
+        self.constant_fold() 
 
 class BinOpAstTester(unittest.TestCase):
-    # ins = osjoin(input('Enter test folder name (enter for testbench): ').strip() or 'testbench')
     ins = 'testbench'
-    def testAll(self):
-        print('\n')
-        for test_type in os.listdir(self.ins):
-            for test_file in os.listdir(osjoin(self.ins, test_type, 'inputs')):
-                if test_file[0] != '.':
-                    with open(osjoin(self.ins, test_type, 'inputs', test_file)) as test:
-                        test_name = test.readline().strip()
-                        data = test.readline().strip()
-                    with open(osjoin(self.ins, test_type, 'outputs', test_file)) as solution:
-                        expected = solution.readline().strip()
-                    print(f'Testing {test_name}')
-                    with self.subTest(msg=f'Testing {test_name}', inp=data, expected=expected):
-                        result = BinOpAst(list(data.split()))
-                        result.simplify_binops() # ;;> All of your tests are testing all of the functions with this line
-                        # ;;> Which works but could make tracking bugs down confusing depending on the shape of the test
-                        # ;;> It's generally better to test one thing specifically so that your bug chasing starts with fewer options
-                        result = result.prefix_str()
-                        self.assertEqual(result, expected)
+
+    def operation_tester(self, function, test_type):
+        '''
+        Function to be tested will be passed in, along with the name if the folder within testbench containing the tests.
+        '''
+        for test_file in os.listdir(osjoin(self.ins, test_type, 'inputs')):
+            if test_file[0] != '.':
+                with open(osjoin(self.ins, test_type, 'inputs', test_file)) as test:
+                    data = test.readline().strip()
+                with open(osjoin(self.ins, test_type, 'outputs', test_file)) as solution:
+                    expected = solution.readline().strip()
+                print(f'Testing {test_type, test_file}')
+                with self.subTest(msg=f'Testing {test_type}', inp=data, expected=expected):
+                    result = BinOpAst(list(data.split()))
+                    function(result)
+                    result = result.prefix_str()
+                    self.assertEqual(result, expected)
+
+    def test_arith_id(self):
+        self.operation_tester(BinOpAst.add_id, 'Arithmetic_Identity')
+
+    def test_mult_id(self):
+        self.operation_tester(BinOpAst.mult_id, 'Multiplicative_Identity')
+
+    def test_mult_zero(self):
+        self.operation_tester(BinOpAst.mult_by_zero, 'Multiplication_By_Zero')
+
+    def test_constant_fold(self):
+        self.operation_tester(BinOpAst.constant_fold, 'Constant_Fold')
+
+    def test_combined(self):
+        self.operation_tester(BinOpAst.simplify_binops, 'Combined')
+
+    # def test_all(self):
+    #     print('\n')
+    #     for test_type in os.listdir(self.ins):
+    #         for test_file in os.listdir(osjoin(self.ins, test_type, 'inputs')):
+    #             if test_file[0] != '.':
+    #                 with open(osjoin(self.ins, test_type, 'inputs', test_file)) as test:
+    #                     test_name = test.readline().strip()
+    #                     data = test.readline().strip()
+    #                 with open(osjoin(self.ins, test_type, 'outputs', test_file)) as solution:
+    #                     expected = solution.readline().strip()
+    #                 # print(f'Testing {test_name}')
+    #                 with self.subTest(msg=f'Testing {test_name}', inp=data, expected=expected):
+    #                     result = BinOpAst(list(data.split()))
+    #                     result.simplify_binops() # ;;> All of your tests are testing all of the functions with this line
+    #                     # ;;> Which works but could make tracking bugs down confusing depending on the shape of the test
+    #                     # ;;> It's generally better to test one thing specifically so that your bug chasing starts with fewer options
+    #                     result = result.prefix_str()
+    #                     self.assertEqual(result, expected)
 
 if __name__ == "__main__":
     unittest.main(argv=[''], verbosity=2, exit=False)
