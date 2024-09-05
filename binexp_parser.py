@@ -94,13 +94,13 @@ class BinOpAst():
         For identity operations (specified by operator passed in), this replaces the
         node with values from the non-matching branch. Example: '*' , 1 or '+' , 0 
         '''
-        if self.type == NodeType.number or self.type == NodeType.variable:
+        if self.type != NodeType.operator:
             return
         
         self.left.identity(operator, match)
         self.right.identity(operator, match)
 
-        if self.type == NodeType.operator and self.val == operator:
+        if self.val == operator:
             if self.left.val == match:
                 self.type = self.right.type
                 self.val = self.right.val
@@ -125,7 +125,7 @@ class BinOpAst():
         Recursively traverses the tree to remove multiplication
         by 0 with 0 for a single iteration.
         '''
-        if self.type == NodeType.number or self.type == NodeType.variable:
+        if self.type != NodeType.operator:
             return
         
         self.left.mult_by_zero()
@@ -186,7 +186,7 @@ class BinOpAst():
         self.add_id()               # Additive Identity
         self.mult_id()              # Multiplicative Identity
         self.mult_by_zero()         # Multiplication by Zero
-        self.constant_fold() 
+        self.constant_fold()        # Constant Folding
 
 class BinOpAstTester(unittest.TestCase):
     ins = 'testbench'
